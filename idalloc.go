@@ -101,7 +101,6 @@ func (self *Idalloc) Gen() (uint64, error) {
 		}
 
 	}
-	// time.Sleep(5 * time.Second)
 
 	return idalloc_id[self.Type], nil
 }
