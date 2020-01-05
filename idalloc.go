@@ -51,11 +51,13 @@ func (self *Idalloc) Gen() (uint64, error) {
 	}
 	var file *os.File
 	var err error
-	filePath := filePathPrefix + self.Type
-	if is_debug {
-		fmt.Println("[Debug]", "Cache file is", filePath)
-	}
+	var filePath string
+
 	if idalloc_id[self.Type] == 0 {
+		filePath = filePathPrefix + self.Type
+		if is_debug {
+			fmt.Println("[Debug]", "Cache file is", filePath)
+		}
 		file, err = openCacheFile(filePath)
 		defer file.Close()
 		if err != nil {
@@ -72,7 +74,6 @@ func (self *Idalloc) Gen() (uint64, error) {
 	}
 
 	idalloc_id[self.Type]++
-	id_str := strconv.FormatUint(idalloc_id[self.Type], 10)
 
 	if idalloc_timeout[self.Type] < time.Now().Unix()-idalloc_sync_duration {
 		//无句柄
@@ -86,6 +87,8 @@ func (self *Idalloc) Gen() (uint64, error) {
 		idalloc_timeout[self.Type] = time.Now().Unix()
 
 		if file != nil {
+			filePath = filePathPrefix + self.Type
+			id_str := strconv.FormatUint(idalloc_id[self.Type], 10)
 			if is_debug {
 				fmt.Println("[Debug]", "save "+filePath, "is", id_str, "to file")
 			}
