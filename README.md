@@ -20,6 +20,7 @@ import (
 ```golang
 
 package main
+
 import (
     "fmt"
     "github.com/chenjinya/go-idalloc"
@@ -27,11 +28,22 @@ import (
 
 func main() {
 
-    ida := idalloc.Idalloc{ Type: "user"}
+    ida := idalloc.Idalloc{
+        Type: "user"}
+
+    //设置为Debug模式，展示日志
+    ida.Debug(false)
+
+    //将自动自动增加步长设为0
+    ida.BootAutoIncre(0)
+
+    //获得ID
     id, err := ida.Gen()
+
     if nil != err {
         fmt.Println(err)
     }
+
     fmt.Println(id)
 }
 
