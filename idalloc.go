@@ -47,7 +47,7 @@ func (self *Idalloc) Gen() (uint64, error) {
 		con, _ := reader.ReadString('\n') //读取一行
 		id, _ := strconv.ParseUint(con, 10, 64)
 		//防止ID回流
-		id += 10
+		id += 1000
 		idalloc_id[self.Type] = id
 	}
 
