@@ -28,7 +28,7 @@ import (
 
 func main() {
 
-    ida := idalloc.Idalloc{
+    ida := idalloc.Pool{
         Type: "user"}
 
     //设置为Debug模式，展示日志

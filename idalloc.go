@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-type Idalloc struct {
+type Pool struct {
 	Type string
 }
 
@@ -30,22 +30,22 @@ var idalloc_sync_duration int64 = 1
 //缓存文件
 const filePathPrefix = "./idalloc_"
 
-func (self *Idalloc) Debug(b bool) {
+func (self *Pool) Debug(b bool) {
 	is_debug = b
 }
 
-func (self *Idalloc) init() {
+func (self *Pool) init() {
 	if idalloc_id == nil {
 		idalloc_id = make(map[string]uint64)
 		idalloc_timeout = make(map[string]int64)
 	}
 }
 
-func (self *Idalloc) BootAutoIncre(n uint64) {
+func (self *Pool) BootAutoIncre(n uint64) {
 	boot_auto_incre = n
 }
 
-func (self *Idalloc) Gen() (uint64, error) {
+func (self *Pool) Gen() (uint64, error) {
 	if idalloc_id == nil {
 		self.init()
 	}
@@ -105,7 +105,7 @@ func (self *Idalloc) Gen() (uint64, error) {
 	return idalloc_id[self.Type], nil
 }
 
-func (self *Idalloc) SyncCacheAll() (bool, error) {
+func (self *Pool) SyncCacheAll() (bool, error) {
 
 	for key, value := range idalloc_id {
 		filePath := filePathPrefix + key
