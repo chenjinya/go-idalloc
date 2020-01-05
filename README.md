@@ -1,6 +1,6 @@
 # go-idalloc
 
-一个随笔联系的自增发号器实现
+一个随笔练习的自增发号器实现
 
 ## 特性
 
@@ -13,7 +13,6 @@
 import (
     "github.com/chenjinya/go-idalloc"
 )
-
 ```
 
 ## DEMO
@@ -21,7 +20,6 @@ import (
 ```golang
 
 package main
-
 import (
     "fmt"
     "github.com/chenjinya/go-idalloc"
@@ -30,13 +28,10 @@ import (
 func main() {
 
     ida := idalloc.Idalloc{ Type: "user"}
-
     id, err := ida.Gen()
-
     if nil != err {
         fmt.Println(err)
     }
-
     fmt.Println(id)
 }
 
