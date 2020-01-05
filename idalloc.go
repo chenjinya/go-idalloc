@@ -18,7 +18,7 @@ var idalloc_timeout map[string]int64
 //同步磁盘间隔
 var idalloc_sync_duration int64 = 1
 
-const filePathPrefix = "./cache/idalloc_"
+const filePathPrefix = "./idalloc_"
 
 func (self *Idalloc) init() {
 	if idalloc_id == nil {
