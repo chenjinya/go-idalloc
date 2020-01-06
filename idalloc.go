@@ -24,52 +24,52 @@ type Pool struct {
 }
 
 //缓存ID
-var idalloc_id map[string]uint64
+var idallocId map[string]uint64
 
 //缓存刷新时间
-var idalloc_timeout map[string]int64
+var idallocTimeout map[string]int64
 
 //Debug 模式
-var is_debug bool = false
+var isDebug bool = false
 
 //启动自增步长
-var boot_auto_incre uint64 = 1000
+var bootAutoIncre uint64 = 1000
 
 //同步磁盘间隔
-var idalloc_sync_duration int64 = 1
+var idallocSyncDuration int64 = 1
 
 //缓存文件
 const filePathPrefix = "./idalloc_"
 
 func (self *Pool) init() {
-	if idalloc_id == nil {
-		idalloc_id = make(map[string]uint64)
-		idalloc_timeout = make(map[string]int64)
+	if idallocId == nil {
+		idallocId = make(map[string]uint64)
+		idallocTimeout = make(map[string]int64)
 	}
 }
 
 //是否为Debug模式
 func (self *Pool) Debug(b bool) {
-	is_debug = b
+	isDebug = b
 }
 
 //启动自增
 func (self *Pool) BootAutoIncre(n uint64) {
-	boot_auto_incre = n
+	bootAutoIncre = n
 }
 
 //生成自增ID
 func (self *Pool) Gen() (uint64, error) {
-	if idalloc_id == nil {
+	if idallocId == nil {
 		self.init()
 	}
 	var file *os.File
 	var err error
 	var filePath string
 
-	if idalloc_id[self.Type] == 0 {
+	if idallocId[self.Type] == 0 {
 		filePath = filePathPrefix + self.Type
-		if is_debug {
+		if isDebug {
 			fmt.Println("[Debug]", "Cache file is", filePath)
 		}
 		file, err = openCacheFile(filePath)
@@ -83,13 +83,13 @@ func (self *Pool) Gen() (uint64, error) {
 		con, _ := reader.ReadString('\n') //读取一行
 		id, _ := strconv.ParseUint(con, 10, 64)
 		//防止ID回流
-		id += boot_auto_incre
-		idalloc_id[self.Type] = id
+		id += bootAutoIncre
+		idallocId[self.Type] = id
 	}
 
-	idalloc_id[self.Type]++
+	idallocId[self.Type]++
 
-	if idalloc_timeout[self.Type] < time.Now().Unix()-idalloc_sync_duration {
+	if idallocTimeout[self.Type] < time.Now().Unix()-idallocSyncDuration {
 		//无句柄
 		if file == nil {
 			file, err = openCacheFile(filePath)
@@ -98,12 +98,12 @@ func (self *Pool) Gen() (uint64, error) {
 				fmt.Println("[Error]", "Open cache file failed", err)
 			}
 		}
-		idalloc_timeout[self.Type] = time.Now().Unix()
+		idallocTimeout[self.Type] = time.Now().Unix()
 
 		if file != nil {
 			filePath = filePathPrefix + self.Type
-			id_str := strconv.FormatUint(idalloc_id[self.Type], 10)
-			if is_debug {
+			id_str := strconv.FormatUint(idallocId[self.Type], 10)
+			if isDebug {
 				fmt.Println("[Debug]", "save "+filePath, "is", id_str, "to file")
 			}
 			_, err = file.WriteAt([]byte(id_str), 0)
@@ -116,13 +116,13 @@ func (self *Pool) Gen() (uint64, error) {
 
 	}
 
-	return idalloc_id[self.Type], nil
+	return idallocId[self.Type], nil
 }
 
 //同步所有缓存到磁盘
 func (self *Pool) SyncCacheAll() (bool, error) {
 
-	for key, value := range idalloc_id {
+	for key, value := range idallocId {
 		filePath := filePathPrefix + key
 		file, err := openCacheFile(filePath)
 		defer file.Close()
@@ -145,7 +145,7 @@ func openCacheFile(filePath string) (file *os.File, err error) {
 
 	file, err = os.OpenFile(filePath, os.O_RDWR, 0)
 	if err != nil && os.IsNotExist(err) {
-		if is_debug {
+		if isDebug {
 			fmt.Println("[Debug]", "File", filePath, "is not Exist, now create it")
 		}
 		file, err = os.OpenFile(filePath, os.O_CREATE|os.O_RDWR, 0644)
