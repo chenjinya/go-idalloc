@@ -8,8 +8,19 @@ import (
 	"time"
 )
 
+//发号池
+type Pooler interface {
+	init()
+	Debug(bool)
+	BootAutoIncre(uint64)
+	Gen() (uint64, error)
+	SyncCacheAll() (bool, error)
+	openCacheFile(string) (*os.File, error)
+}
+
+//发号器
 type Pool struct {
-	Type string
+	Type string `发号器类型`
 }
 
 //缓存ID
@@ -30,10 +41,6 @@ var idalloc_sync_duration int64 = 1
 //缓存文件
 const filePathPrefix = "./idalloc_"
 
-func (self *Pool) Debug(b bool) {
-	is_debug = b
-}
-
 func (self *Pool) init() {
 	if idalloc_id == nil {
 		idalloc_id = make(map[string]uint64)
@@ -41,10 +48,17 @@ func (self *Pool) init() {
 	}
 }
 
+//是否为Debug模式
+func (self *Pool) Debug(b bool) {
+	is_debug = b
+}
+
+//启动自增
 func (self *Pool) BootAutoIncre(n uint64) {
 	boot_auto_incre = n
 }
 
+//生成自增ID
 func (self *Pool) Gen() (uint64, error) {
 	if idalloc_id == nil {
 		self.init()
@@ -105,6 +119,7 @@ func (self *Pool) Gen() (uint64, error) {
 	return idalloc_id[self.Type], nil
 }
 
+//同步所有缓存到磁盘
 func (self *Pool) SyncCacheAll() (bool, error) {
 
 	for key, value := range idalloc_id {
@@ -125,6 +140,7 @@ func (self *Pool) SyncCacheAll() (bool, error) {
 	return true, nil
 }
 
+//打开缓存文件
 func openCacheFile(filePath string) (file *os.File, err error) {
 
 	file, err = os.OpenFile(filePath, os.O_RDWR, 0)
