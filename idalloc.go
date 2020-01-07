@@ -2,29 +2,28 @@ package idalloc
 
 import (
 	"bufio"
-	"fmt"
+	"errors"
+	"log"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 )
 
-//发号池
+//Pooler 发号器池
 type Pooler interface {
 	init()
-	Debug(bool)
-	BootAutoIncre(uint64)
-	Gen() (uint64, error)
-	SyncCacheAll() (bool, error)
-	openCacheFile(string) (*os.File, error)
+	genderate() (uint64, error)
+	cache() (bool, error)
+	Run(string, chan<- uint64)
 }
 
-//发号器
-type Pool struct {
-	Type string `发号器类型`
-}
+//Pool 发号器池
+type Pool struct{}
 
 //缓存ID
-var idallocId map[string]uint64
+var idallocID map[string]uint64
 
 //缓存刷新时间
 var idallocTimeout map[string]int64
@@ -39,44 +38,68 @@ var bootAutoIncre uint64 = 1000
 var idallocSyncDuration int64 = 1
 
 //缓存文件
-const filePathPrefix = "./idalloc_"
+const cacheFilePrefix = "./idalloc_"
 
-func (self *Pool) init() {
-	if idallocId == nil {
-		idallocId = make(map[string]uint64)
+//Debug 是否为Debug模式
+func (pl *Pool) Debug(b bool) {
+	isDebug = b
+}
+
+//BootAutoIncre 设置启动自增步长
+func (pl *Pool) BootAutoIncre(n uint64) {
+	bootAutoIncre = n
+}
+
+//初始化
+func (pl *Pool) init() {
+	if idallocID == nil {
+		idallocID = make(map[string]uint64)
 		idallocTimeout = make(map[string]int64)
 	}
 }
 
-//是否为Debug模式
-func (self *Pool) Debug(b bool) {
-	isDebug = b
+//Run 开启一个发号器协程，通道只能出
+func (pl *Pool) Run(t string, out chan<- uint64) {
+	go func() {
+		for {
+			i, err := pl.genderate(t)
+			if nil != err {
+				panic("Generate id error")
+			}
+			out <- i
+		}
+
+	}()
+
+	signalChan := make(chan os.Signal, 1)
+	go func() {
+		<-signalChan
+		log.Println(`[Before Quite]Sync cache ` + t)
+		pl.cache(t)
+		os.Exit(0)
+	}()
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 }
 
-//启动自增
-func (self *Pool) BootAutoIncre(n uint64) {
-	bootAutoIncre = n
-}
-
-//生成自增ID
-func (self *Pool) Gen() (uint64, error) {
-	if idallocId == nil {
-		self.init()
+//genderate 生成自增ID
+func (pl *Pool) genderate(t string) (uint64, error) {
+	if idallocID == nil {
+		pl.init()
 	}
 	var file *os.File
 	var err error
-	var filePath string
+	var cf string
+	cf = cacheFilePrefix + t
 
-	if idallocId[self.Type] == 0 {
-		filePath = filePathPrefix + self.Type
+	if idallocID[t] == 0 {
+
 		if isDebug {
-			fmt.Println("[Debug]", "Cache file is", filePath)
+			log.Println("[Debug]", "Cache file is", cf)
 		}
-		file, err = openCacheFile(filePath)
+		file, err = openCacheFile(cf)
 		defer file.Close()
 		if err != nil {
-			fmt.Println(err)
-			return 0, err
+			return 0, errors.New("Open cache file failed")
 		}
 
 		reader := bufio.NewReader(file)
@@ -84,76 +107,70 @@ func (self *Pool) Gen() (uint64, error) {
 		id, _ := strconv.ParseUint(con, 10, 64)
 		//防止ID回流
 		id += bootAutoIncre
-		idallocId[self.Type] = id
+		idallocID[t] = id
 	}
 
-	idallocId[self.Type]++
+	idallocID[t]++
 
-	if idallocTimeout[self.Type] < time.Now().Unix()-idallocSyncDuration {
+	if idallocTimeout[t] < time.Now().Unix()-idallocSyncDuration {
 		//无句柄
 		if file == nil {
-			file, err = openCacheFile(filePath)
+			file, err = openCacheFile(cf)
 			defer file.Close()
 			if err != nil {
-				fmt.Println("[Error]", "Open cache file failed", err)
+				return 0, errors.New("Open cache file failed")
 			}
 		}
-		idallocTimeout[self.Type] = time.Now().Unix()
+		idallocTimeout[t] = time.Now().Unix()
 
 		if file != nil {
-			filePath = filePathPrefix + self.Type
-			id_str := strconv.FormatUint(idallocId[self.Type], 10)
+			s := strconv.FormatUint(idallocID[t], 10)
 			if isDebug {
-				fmt.Println("[Debug]", "save "+filePath, "is", id_str, "to file")
+				log.Println("[Debug]", "save "+cf, "is", s, "to file")
 			}
-			_, err = file.WriteAt([]byte(id_str), 0)
+			_, err = file.WriteAt([]byte(s), 0)
 			if err != nil {
-				fmt.Println("[Error]", "Save cache file failed", err, id_str)
+				panic("Save cache file failed" + err.Error())
 			}
 		} else {
-			fmt.Println("[Warn]", "Need save cache file, but `file` is nill")
+			// fmt.Println("[Warn]", "Need save cache file, but `file` is nill")
+			panic("Need save cache file, but `file` is nill")
 		}
 
 	}
 
-	return idallocId[self.Type], nil
+	return idallocID[t], nil
 }
 
-//同步所有缓存到磁盘
-func (self *Pool) SyncCacheAll() (bool, error) {
+//cache 同步缓存到磁盘
+func (pl *Pool) cache(t string) (bool, error) {
 
-	for key, value := range idallocId {
-		filePath := filePathPrefix + key
-		file, err := openCacheFile(filePath)
-		defer file.Close()
-		if err != nil {
-			fmt.Println("[Error]", "Open cache file failed", err)
-		}
-		id_str := strconv.FormatUint(value, 10)
-		fmt.Println("save "+filePath, "is", id_str, "to file")
-		_, err = file.WriteAt([]byte(id_str), 0)
-		if err != nil {
-			fmt.Println("[Error]", "Save cache file failed", err, id_str)
-		}
+	cf := cacheFilePrefix + t
+	file, err := openCacheFile(cf)
+	defer file.Close()
+	if err != nil {
+		return false, errors.New("Open cache file failed")
 	}
-
+	s := strconv.FormatUint(idallocID[t], 10)
+	_, err = file.WriteAt([]byte(s), 0)
+	if err != nil {
+		panic("Save cache file failed. " + err.Error())
+	}
 	return true, nil
 }
 
-//打开缓存文件
-func openCacheFile(filePath string) (file *os.File, err error) {
+//openCacheFile 打开缓存文件
+func openCacheFile(p string) (file *os.File, err error) {
 
-	file, err = os.OpenFile(filePath, os.O_RDWR, 0)
+	file, err = os.OpenFile(p, os.O_RDWR, 0)
 	if err != nil && os.IsNotExist(err) {
 		if isDebug {
-			fmt.Println("[Debug]", "File", filePath, "is not Exist, now create it")
+			log.Println("[Debug]", "File", p, "is not Exist, now create it")
 		}
-		file, err = os.OpenFile(filePath, os.O_CREATE|os.O_RDWR, 0644)
+		file, err = os.OpenFile(p, os.O_CREATE|os.O_RDWR, 0644)
 		if err != nil {
-			fmt.Println(err)
-			return nil, err
+			panic(err)
 		}
 	}
-
 	return file, nil
 }
