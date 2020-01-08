@@ -9,14 +9,13 @@ import (
 )
 
 func main() {
-	var ida idalloc.Pool
 	idcu := make(chan uint64)
 	idca := make(chan uint64)
 
-	ida.Run("user", idcu)
-	ida.Run("article", idca)
-	ida.BootAutoIncre(0)
-	ida.Debug(true)
+	idalloc.Run("user", idcu)
+	idalloc.Run("article", idca)
+	idalloc.BootAutoIncre(0)
+	idalloc.Debug(true)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {

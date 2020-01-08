@@ -29,17 +29,16 @@ import (
 )
 
 func main() {
-  var ida idalloc.Pool
-    idc := make(chan uint64)
-    //开启一个user发号器
-    ida.Run("user", idc)
-    //启动自增设置为0
-    ida.BootAutoIncre(0)
-    //开启Debug模式
+  idc := make(chan uint64)
+  //开启一个user发号器
+  idalloc.Run("user", idc)
+  //启动自增设置为0
+  idalloc.BootAutoIncre(0)
+  //开启Debug模式
   ida.Debug(true)
   var wg sync.WaitGroup
-    wg.Add(1)
-    //模拟并发
+  wg.Add(1)
+  //模拟并发
   go func() {
     for {
       time.Sleep(time.Second)

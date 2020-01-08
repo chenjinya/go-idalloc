@@ -11,17 +11,6 @@ import (
 	"time"
 )
 
-//Pooler 发号器池
-type Pooler interface {
-	init()
-	genderate() (uint64, error)
-	cache() (bool, error)
-	Run(string, chan<- uint64)
-}
-
-//Pool 发号器池
-type Pool struct{}
-
 //缓存ID
 var idallocID map[string]uint64
 
@@ -41,17 +30,17 @@ var idallocSyncDuration int64 = 1
 const cacheFilePrefix = "./idalloc_"
 
 //Debug 是否为Debug模式
-func (pl *Pool) Debug(b bool) {
+func Debug(b bool) {
 	isDebug = b
 }
 
 //BootAutoIncre 设置启动自增步长
-func (pl *Pool) BootAutoIncre(n uint64) {
+func BootAutoIncre(n uint64) {
 	bootAutoIncre = n
 }
 
 //初始化
-func (pl *Pool) init() {
+func init() {
 	if idallocID == nil {
 		idallocID = make(map[string]uint64)
 		idallocTimeout = make(map[string]int64)
@@ -59,10 +48,10 @@ func (pl *Pool) init() {
 }
 
 //Run 开启一个发号器协程，通道只能出
-func (pl *Pool) Run(t string, out chan<- uint64) {
+func Run(t string, out chan<- uint64) {
 	go func() {
 		for {
-			i, err := pl.genderate(t)
+			i, err := genderate(t)
 			if nil != err {
 				panic("Generate id error")
 			}
@@ -75,17 +64,14 @@ func (pl *Pool) Run(t string, out chan<- uint64) {
 	go func() {
 		<-signalChan
 		log.Println(`[Before Quite]Sync cache ` + t)
-		pl.cache(t)
+		cache(t)
 		os.Exit(0)
 	}()
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 }
 
 //genderate 生成自增ID
-func (pl *Pool) genderate(t string) (uint64, error) {
-	if idallocID == nil {
-		pl.init()
-	}
+func genderate(t string) (uint64, error) {
 	var file *os.File
 	var err error
 	var cf string
@@ -143,7 +129,7 @@ func (pl *Pool) genderate(t string) (uint64, error) {
 }
 
 //cache 同步缓存到磁盘
-func (pl *Pool) cache(t string) (bool, error) {
+func cache(t string) (bool, error) {
 
 	cf := cacheFilePrefix + t
 	file, err := openCacheFile(cf)
