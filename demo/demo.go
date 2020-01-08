@@ -11,9 +11,8 @@ import (
 func main() {
 	idcu := make(chan uint64)
 	idca := make(chan uint64)
-
-	idalloc.Run("user", idcu)
-	idalloc.Run("article", idca)
+	pl := idalloc.Pool{}
+	pl.Run("user", idcu).Run("article", idca)
 	idalloc.BootAutoIncre(0)
 	idalloc.Debug(true)
 	var wg sync.WaitGroup

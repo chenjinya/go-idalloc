@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+type Pool struct{}
+
 //缓存ID
 var idallocID map[string]uint64
 
@@ -48,7 +50,7 @@ func init() {
 }
 
 //Run 开启一个发号器协程，通道只能出
-func Run(t string, out chan<- uint64) {
+func (pl *Pool) Run(t string, out chan<- uint64) *Pool {
 	go func() {
 		for {
 			i, err := genderate(t)
@@ -68,6 +70,8 @@ func Run(t string, out chan<- uint64) {
 		os.Exit(0)
 	}()
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
+	return pl
 }
 
 //genderate 生成自增ID

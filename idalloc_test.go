@@ -20,7 +20,8 @@ func TestRun(t *testing.T) {
 	BootAutoIncre(0)
 	idc := make(chan uint64)
 	os.Remove(cf)
-	Run("test", idc)
+	pl := Pool{}
+	pl.Run("test", idc)
 	if 1 != <-idc {
 		t.Error(`Run goroutine idalloc id error`)
 	}

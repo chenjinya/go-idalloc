@@ -30,8 +30,14 @@ import (
 
 func main() {
   idc := make(chan uint64)
+
+  pl := idalloc.Pool{}
   //开启一个user发号器
-  idalloc.Run("user", idc)
+  pl.Run("user", idc)
+  //如果同时开启多个发号器，可以进行链式调用 (可见Demo)
+  /*
+   * pl.Run("user", idc1).Run("article", idc2)
+   */
   //启动自增设置为0
   idalloc.BootAutoIncre(0)
   //开启Debug模式
